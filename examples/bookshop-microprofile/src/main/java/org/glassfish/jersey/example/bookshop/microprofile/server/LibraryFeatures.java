@@ -10,6 +10,8 @@
 
 package org.glassfish.jersey.example.bookshop.microprofile.server;
 
+import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
+
 import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -21,6 +23,7 @@ import javax.ws.rs.core.Response;
 /**
  * Interface which gather the Library method used by microprofile rest client
  */
+@RegisterRestClient(baseUri = "http://localhost:8080/library")
 public interface LibraryFeatures {
 
     @POST

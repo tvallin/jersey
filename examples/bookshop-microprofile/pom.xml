@@ -44,6 +44,20 @@
             <artifactId>geronimo-config-impl</artifactId>
             <version>1.0</version>
         </dependency>
+        <dependency>
+            <groupId>org.glassfish.jersey.ext.cdi</groupId>
+            <artifactId>jersey-weld2-se</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>javax.enterprise</groupId>
+            <artifactId>cdi-api</artifactId>
+            <version>2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.weld.servlet</groupId>
+            <artifactId>weld-servlet-core</artifactId>
+            <version>3.1.2.Final</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -51,6 +65,22 @@
             <plugin>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-maven-plugin</artifactId>
+                <configuration>
+                    <contextXml>src/main/webapp/WEB-INF/jetty-web.xml</contextXml>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.eclipse.sisu</groupId>
+                        <artifactId>org.eclipse.sisu.plexus</artifactId>
+                        <version>0.3.3</version>
+                        <exclusions>
+                            <exclusion>
+                                <groupId>javax.enterprise</groupId>
+                                <artifactId>cdi-api</artifactId>
+                            </exclusion>
+                        </exclusions>
+                    </dependency>
+                </dependencies>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -59,7 +89,7 @@
                 <configuration>
                     <mainClass>org.glassfish.jersey.example.bookshop.microprofile.client.LibraryClient</mainClass>
                     <arguments>
-                        <argument>5</argument>
+                        <argument>1</argument>
                     </arguments>
                 </configuration>
             </plugin>

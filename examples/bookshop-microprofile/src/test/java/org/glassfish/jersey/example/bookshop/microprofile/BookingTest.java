@@ -49,6 +49,7 @@ public class BookingTest extends TestSupport {
     }
 
     @Test
+    @Ignore
     public void reserveWrongBookName() throws URISyntaxException {
         Calendar calendar = Calendar.getInstance();
         calendar.set(2020, Calendar.JULY, 1);
@@ -69,6 +70,7 @@ public class BookingTest extends TestSupport {
     }
 
     @Test
+    @Ignore
     public void reserveWrongCustomerName() throws URISyntaxException {
         Calendar calendar = Calendar.getInstance();
         calendar.set(2020, Calendar.JULY, 1);

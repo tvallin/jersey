@@ -11,7 +11,9 @@
 package org.glassfish.jersey.example.bookshop.microprofile.server;
 
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
 
+import javax.inject.Inject;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Response;
 import java.net.URI;
@@ -37,6 +39,10 @@ public class BookingService implements BookingFeatures {
      */
     private static HashMap<String, ArrayList<Date>> borrowingHistory = new HashMap<String, ArrayList<Date>>();
 
+    @Inject
+    @RestClient
+    private LibraryFeatures libraryClient;
+
     /**
      * Process book and customer check up.
      *
@@ -51,9 +57,9 @@ public class BookingService implements BookingFeatures {
     public Response reserveBookByName(String customerName, String bookName, Date fromDate, Date toDate)
             throws URISyntaxException {
 
-        LibraryFeatures libraryClient = RestClientBuilder.newBuilder()
+        /*LibraryFeatures libraryClient = RestClientBuilder.newBuilder()
                 .baseUri(new URI("http://localhost:8080/library"))
-                .build(LibraryFeatures.class);
+                .build(LibraryFeatures.class);*/
 
         if (!libraryClient.containsBook(bookName)) {
             return Response.ok().entity(bookName + " is not at the library").build();
