@@ -25,7 +25,7 @@ public abstract class TestSupport extends JerseyTest {
     @Override
     protected Application configure() {
         ResourceConfig application = new ResourceConfig();
-        application.packages(BookingResource.class.getPackage().getName());
+        application.packages(TestSupport.class.getPackage().getName());
         set(TestProperties.CONTAINER_PORT, 8080);
         return application;
     }
