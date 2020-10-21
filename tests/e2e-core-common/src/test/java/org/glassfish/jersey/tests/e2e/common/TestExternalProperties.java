@@ -23,6 +23,8 @@ import org.glassfish.jersey.ExternalProperties;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import javax.servlet.http.HttpServletRequest;
@@ -30,13 +32,20 @@ import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Application;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class TestExternalProperties extends JerseyTest {
 
     private static final String PROXY_HOST = "localhost";
     private static final String PROXY_PORT = "9997";
     private static boolean proxyHit = false;
+
+    private static final String AGENT = "Custom-agent";
+    private static final String AGENT_SERVER_URI = "http://localhost:9789/";
+    private static final String AGENT_REQUEST_HEADER = "request-agent";
 
     @Path("resource")
     public static class ProxyTestResource {
@@ -53,9 +62,14 @@ public class TestExternalProperties extends JerseyTest {
         return new ResourceConfig(ProxyTestResource.class);
     }
 
+    @Before
+    public void setAgentProperty() {
+        System.setProperty(ExternalProperties.HTTP_AGENT, AGENT);
+    }
+
     @Test
     public void testProxy() {
-        startFakeProxy();
+        startHandler(new ProxyHandler(false), 9997);
 
         System.setProperty(ExternalProperties.HTTP_PROXY_HOST, PROXY_HOST);
         System.setProperty(ExternalProperties.HTTP_PROXY_PORT, PROXY_PORT);
@@ -68,7 +82,7 @@ public class TestExternalProperties extends JerseyTest {
 
     @Test
     public void testNonProxy() {
-        startFakeProxy();
+        startHandler(new ProxyHandler(false), 9997);
 
         System.setProperty(ExternalProperties.HTTP_PROXY_HOST, PROXY_HOST);
         System.setProperty(ExternalProperties.HTTP_PROXY_PORT, PROXY_PORT);
@@ -81,13 +95,34 @@ public class TestExternalProperties extends JerseyTest {
         Assert.assertFalse(proxyHit);
     }
 
-    private void startFakeProxy() {
-        Server server = new Server(9997);
-        server.setHandler(new ProxyHandler(false));
+    @Test
+    public void testHttpAgent() {
+        System.getProperties().clear();
+        System.setProperty(ExternalProperties.HTTP_AGENT, AGENT);
+
+        startHandler(new AgentHandler(), 9789);
+
+        Response response = getClient().target(AGENT_SERVER_URI).request().get();
+        Object result = response.getHeaders().getFirst(AGENT_REQUEST_HEADER);
+        Assert.assertEquals(200, response.getStatus());
+
+        String[] agentHeaders = result.toString().split(" ");
+        if (agentHeaders.length == 0) {
+            Assert.fail();
+        } else {
+            Assert.assertEquals(AGENT, agentHeaders[0]);
+        }
+
+    }
+
+    private void startHandler(AbstractHandler abstractHandler, final int port)  {
+        Server server = new Server(port);
+        server.setHandler(abstractHandler);
         try {
             server.start();
         } catch (Exception e) {
-
+            Logger.getLogger(TestExternalProperties.class.getName())
+                    .log(Level.SEVERE, e.getMessage());
         }
     }
 
@@ -105,6 +140,19 @@ public class TestExternalProperties extends JerseyTest {
         ProxyHandler(boolean pProxyHit) {
             super();
             proxyHit = pProxyHit;
+        }
+    }
+
+    class AgentHandler extends AbstractHandler {
+        @Override
+        public void handle(String target,
+                           Request baseRequest,
+                           HttpServletRequest request,
+                           HttpServletResponse response) {
+
+            response.setStatus(200);
+            response.addHeader(AGENT_REQUEST_HEADER, request.getHeader(HttpHeaders.USER_AGENT));
+            baseRequest.setHandled(true);
         }
     }
 

@@ -261,13 +261,13 @@ class ClientRuntime implements JerseyClient.ShutdownHook, ClientExecutor {
                 headers.remove(HttpHeaders.USER_AGENT);
             }
         } else if (!clientRequest.ignoreUserAgent()) {
-            if (connectorName != null && !connectorName.isEmpty()) {
+            /*if (connectorName != null && !connectorName.isEmpty()) {
                 headers.put(HttpHeaders.USER_AGENT,
                         Collections.singletonList(String.format("Jersey/%s (%s)", Version.getVersion(), connectorName)));
             } else {
                 headers.put(HttpHeaders.USER_AGENT,
                         Collections.singletonList(String.format("Jersey/%s", Version.getVersion())));
-            }
+            }*/
         }
 
         return clientRequest;

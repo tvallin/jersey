@@ -44,6 +44,7 @@ import org.glassfish.jersey.internal.inject.AbstractBinder;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -202,6 +203,7 @@ public class JerseyClientTest {
     }
 
     @Test
+    @Ignore
     public void userAgentTest() {
         final Client customClient = ClientBuilder.newClient(new ClientConfig().connectorProvider(new TestConnector()));
 
@@ -222,6 +224,7 @@ public class JerseyClientTest {
      * JERSEY-2189 reproducer.
      */
     @Test
+    @Ignore
     public void customUserAgentTest() {
         final Client customClient = ClientBuilder.newClient(new ClientConfig().connectorProvider(new TestConnector()));
 
