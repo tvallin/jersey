@@ -46,7 +46,7 @@ public final class ExternalProperties {
     /**
      * Property used to indicates if persistent connections should be supported.
      */
-    public static final String HTTP_KEEPALIVE = "http.keepalive";
+    public static final String HTTP_KEEPALIVE = "http.keepAlive";
 
     /**
      * If HTTP keepalive is enabled this value determines
