@@ -1,23 +1,8 @@
-package org.glassfish.jersey.tests.e2e.common;
+package org.glassfish.jersey.tests.externalproperties;
 
-import com.sun.net.httpserver.HttpContext;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
 import org.glassfish.jersey.ExternalProperties;
-import org.glassfish.jersey.server.ResourceConfig;
-import org.glassfish.jersey.test.JerseyTest;
-import org.junit.Assert;
-import org.junit.Test;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.core.Application;
-import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-
-public class TempTests extends JerseyTest {
+public class TestResource {
 
     private static final String PROXY_HOST = "localhost";
     private static final String PROXY_PORT = "9997";
@@ -67,6 +52,4 @@ public class TempTests extends JerseyTest {
         System.setProperty(ExternalProperties.NETWORK_ADDRESS_CACHE_NEGATIVE_TTL, ZERO);
 
     }
-
 }
-
