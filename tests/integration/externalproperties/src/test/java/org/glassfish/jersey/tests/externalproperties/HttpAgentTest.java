@@ -1,67 +1,79 @@
 package org.glassfish.jersey.tests.externalproperties;
 
-import org.eclipse.jetty.server.Request;
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.glassfish.jersey.ExternalProperties;
+import org.glassfish.grizzly.http.server.HttpHandler;
+import org.glassfish.grizzly.http.server.HttpServer;
+import org.glassfish.grizzly.http.server.Request;
+import org.glassfish.grizzly.http.server.Response;
+import org.glassfish.jersey.client.JerseyClientBuilder;
+import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
+import org.glassfish.jersey.internal.Version;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.ProcessingException;
 import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.net.URI;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class HttpAgentTest {
 
     private final String AGENT = "Custom-agent";
-    private final String AGENT_HANDLER_URI = "http://localhost:9997/";
-    private final int PORT = 9997;
-    private Server server;
+    private final URI BASE_URI = URI.create("http://localhost:9997/");
+    private HttpServer server;
 
     @Test
-    public void testHttpAgent() {
-        Assert.assertEquals(AGENT, System.getProperty(ExternalProperties.HTTP_AGENT));
+    public void testHttpAgentSetBySystemProperty() {
+        javax.ws.rs.core.Response response = JerseyClientBuilder.newClient()
+                .target(BASE_URI)
+                .request()
+                .header(HttpHeaders.USER_AGENT, null)
+                .get();
 
-        Response response = ClientBuilder.newClient().target(AGENT_HANDLER_URI).request().get();
+        Assert.assertTrue(response.readEntity(String.class).contains(AGENT));
+    }
 
-        Assert.assertEquals(200, response.getStatus());
+    @Test
+    public void testUserAgentJerseyHeader() {
+        javax.ws.rs.core.Response response = JerseyClientBuilder.newClient()
+                .target(BASE_URI)
+                .request()
+                .get();
+
+        String agentHeader = response.readEntity(String.class);
+        Assert.assertFalse(agentHeader.contains(AGENT));
+        Assert.assertTrue(agentHeader.contains("Jersey/" + Version.getVersion()));
     }
 
     @Before
-    public void startAgentHandler()  {
-        server = new Server(PORT);
-        server.setHandler(new AgentHandler());
+    public void startAgentServer() {
+        server = GrizzlyHttpServerFactory.createHttpServer(BASE_URI);
+        Runtime.getRuntime().addShutdownHook(new Thread(server::shutdownNow));
+
         try {
             server.start();
-        } catch (Exception e) {
-
+        } catch (IOException ioe) {
+            throw new ProcessingException("Grizzly server failed to start");
         }
+
+        server.getServerConfiguration().addHttpHandler(new HttpHandler() {
+            @Override
+            public void service(Request request, Response response) throws Exception {
+                String agentHeader = request.getHeader(HttpHeaders.USER_AGENT);
+                response.setContentType("text/plain");
+                response.setContentLength(agentHeader.length());
+                response.getWriter().write(agentHeader);
+                response.setStatus(200);
+            }
+        });
     }
 
     @After
-    public void stopAgentHandler() {
-        try {
-            server.stop();
-        } catch (Exception e) {
-
-        }
-    }
-
-    class AgentHandler extends AbstractHandler {
-        @Override
-        public void handle(String target,
-                           Request baseRequest,
-                           HttpServletRequest request,
-                           HttpServletResponse response) {
-
-            Assert.assertEquals(AGENT, request.getHeader(HttpHeaders.USER_AGENT).split(" ")[0]);
-            response.setStatus(200);
-            baseRequest.setHandled(true);
-        }
+    public void stopAgentServer() {
+        server.shutdownNow();
     }
 
 }
