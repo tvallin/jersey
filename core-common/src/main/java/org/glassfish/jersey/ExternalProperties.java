@@ -38,6 +38,21 @@ public final class ExternalProperties {
     public static final String HTTP_NON_PROXY_HOSTS = "http.nonProxyHosts";
 
     /**
+     * Property used to enforce authentication with an origin.
+     */
+    public static final String HTTP_AUTH_DIGEST_VALIDATE_SERVER = "http.auth.digest.validateServer";
+
+    /**
+     * Property used to enforce authentication with a proxy server.
+     */
+    public static final String HTTP_AUTH_DIGEST_VALIDATE_PROXY = "http.auth.digest.validateProxy";
+
+    /**
+     * This property determines how many times a cnonce value is re-used.
+     */
+    public static final String HTTP_AUTH_DIGEST_CNONCE_REPEAT = "http.auth.digest.cnonceRepeat";
+
+    /**
      * Prevent instantiation.
      */
     private ExternalProperties() {
