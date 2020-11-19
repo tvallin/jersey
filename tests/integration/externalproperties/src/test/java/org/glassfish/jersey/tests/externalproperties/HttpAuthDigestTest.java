@@ -1,116 +1,115 @@
 package org.glassfish.jersey.tests.externalproperties;
 
 
-import org.glassfish.jersey.ExternalProperties;
+import org.eclipse.jetty.security.ConstraintMapping;
+import org.eclipse.jetty.security.ConstraintSecurityHandler;
+import org.eclipse.jetty.security.HashLoginService;
+import org.eclipse.jetty.security.SecurityHandler;
+import org.eclipse.jetty.security.UserStore;
+import org.eclipse.jetty.security.authentication.BasicAuthenticator;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.security.Constraint;
+import org.eclipse.jetty.util.security.Credential;
 import org.glassfish.jersey.client.authentication.HttpAuthenticationFeature;
-import org.glassfish.jersey.server.ResourceConfig;
-import org.glassfish.jersey.test.JerseyTest;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.core.Application;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.HttpHeaders;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.UriBuilder;
 import java.io.IOException;
-import java.security.Principal;
+import java.net.URI;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-public class HttpAuthDigestTest extends JerseyTest {
+public class HttpAuthDigestTest {
 
     private String AUTHENTICATION_INFO = "Authentication-Info";
     private String PROXY_AUTHORIZATION = "Proxy-Authorization";
     private String PROXY_AUTHENTICATION = "Proxy-Authentication";
-
-    @Path("resource")
-    public static class MyResource {
-
-        @Context
-        SecurityContext securityContext;
-
-        @GET
-        public String digest() {
-            return securityContext.getAuthenticationScheme() + ":" + securityContext.getUserPrincipal().getName();
-        }
-    }
-
-    public static class DigestFilter implements ContainerRequestFilter {
-
-        @Override
-        public void filter(ContainerRequestContext requestContext) throws IOException {
-            final String authorization = requestContext.getHeaderString(HttpHeaders.AUTHORIZATION);
-
-            if (authorization != null && authorization.trim().toUpperCase().startsWith("DIGEST")) {
-                final Matcher match = Pattern.compile("username=\"([^\"]+)\"").matcher(authorization);
-                if (!match.find()) {
-                    return;
-                }
-                final String username = match.group(1);
-
-                requestContext.setSecurityContext(new SecurityContext() {
-                    @Override
-                    public Principal getUserPrincipal() {
-                        return new Principal() {
-                            @Override
-                            public String getName() {
-                                return username;
-                            }
-                        };
-                    }
-
-                    @Override
-                    public boolean isUserInRole(String role) {
-                        return false;
-                    }
-
-                    @Override
-                    public boolean isSecure() {
-                        return false;
-                    }
-
-                    @Override
-                    public String getAuthenticationScheme() {
-                        return "DIGEST";
-                    }
-                });
-                return;
-            }
-            requestContext.abortWith(Response.status(401).header(HttpHeaders.WWW_AUTHENTICATE,
-                    "Digest realm=\"my-realm\", domain=\"\", nonce=\"n9iv3MeSNkEfM3uJt2gnBUaWUbKAljxp\", algorithm=MD5, "
-                            + "qop=\"auth\", stale=false")
-                    .build());
-        }
-    }
-
-    @Override
-    protected Application configure() {
-        ResourceConfig config = new ResourceConfig(MyResource.class);
-        config.register(new DigestFilter());
-        return config;
-    }
+    private Server server;
+    private final int PORT = 9997;
+    private final URI BASE_URI = UriBuilder.fromUri("http://localhost/").port(PORT).build();
 
     @Test
     public void testValidateServer() {
-        System.setProperty(ExternalProperties.HTTP_AUTH_DIGEST_VALIDATE_SERVER, "true");
-        System.setProperty(ExternalProperties.HTTP_AUTH_DIGEST_VALIDATE_PROXY, "true");
-
-        Response response = target("resource")
+        Response response = ClientBuilder.newClient()
+                .target(BASE_URI + "/resource")
                 .register(HttpAuthenticationFeature.digest("Bob", "bob'sPassword"))
                 .request()
                 .get();
 
-        Assert.assertEquals(200, response.getStatus());
-        Assert.assertEquals("DIGEST:Bob", response.readEntity(String.class));
+        Assert.assertEquals(401, response.getStatus());
 
-        //Logger.getLogger(HttpAuthDigestTest.class.getName())
-        //        .log(Level.INFO, String.valueOf(response.getHeaders().getFirst(AUTHENTICATION_INFO)));
+        Logger.getLogger(HttpAuthDigestTest.class.getName())
+                .log(Level.INFO, String.valueOf(response.getHeaders()));
+    }
+
+    @Before
+    public void createServer() {
+        server = new Server(PORT);
+        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+        context.setSecurityHandler(digestAuth());
+        context.setContextPath("/");
+        server.setHandler(context);
+        context.addServlet(new ServletHolder(new HelloWorldServlet()), "/*");
+        try {
+            server.start();
+        } catch (Exception e) {
+
+        }
+
+    }
+
+    @After
+    public void stopServer() throws Exception {
+        server.stop();
+    }
+
+    private SecurityHandler digestAuth() {
+        UserStore userStore = new UserStore();
+        userStore.addUser("Bob", Credential.getCredential("bob'sPassword"), new String[]{"user"});
+
+        HashLoginService loginService = new HashLoginService();
+        loginService.setUserStore(userStore);
+        loginService.setName("Private!");
+
+        Constraint constraint = new Constraint();
+        constraint.setName(Constraint.__DIGEST_AUTH);
+        constraint.setRoles(new String[]{"user"});
+        constraint.setAuthenticate(true);
+
+        ConstraintMapping cm = new ConstraintMapping();
+        cm.setConstraint(constraint);
+        cm.setPathSpec("/*");
+
+        ConstraintSecurityHandler csh = new ConstraintSecurityHandler();
+        csh.setAuthenticator(new BasicAuthenticator());
+        csh.setRealmName("myrealm");
+        csh.addConstraintMapping(cm);
+        csh.setLoginService(loginService);
+
+        return csh;
+    }
+
+    private class HelloWorldServlet extends HttpServlet {
+
+        private final String HELLO = "Hello World !";
+
+        @Override
+        protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+            resp.setStatus(200);
+            resp.setContentType("text/plain");
+            resp.setContentLength(HELLO.length());
+            resp.getWriter().write(HELLO);
+        }
     }
 }
