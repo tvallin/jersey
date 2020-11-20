@@ -38,6 +38,18 @@ public final class ExternalProperties {
     public static final String HTTP_NON_PROXY_HOSTS = "http.nonProxyHosts";
 
     /**
+     * Property used to specify the hostname, or address, of the proxy server
+     * used by https protocol.
+     */
+    public static final String HTTPS_PROXY_HOST = "https.ProxyHost";
+
+    /**
+     * Property used to specify the port number of the proxy server
+     * used by https protocol.
+     */
+    public static final String HTTPS_PROXY_PORT = "https.ProxyPort";
+
+    /**
      * Prevent instantiation.
      */
     private ExternalProperties() {
